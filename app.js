@@ -1,6 +1,8 @@
 var mongoose = require('mongoose');
 var dbUrl = 'mongodb://localhost:27017/baza';
 
+mongoose.connect(dbUrl);
+
 var userSchema = mongoose.Schema({
 	name:String,
 	surname:String,
@@ -12,13 +14,14 @@ var User = mongoose.model('User',userSchema);
 
 var users = [];
 
-function SaveUsers(){
+function SaveUsers(cb){
 	for (var i = 0; i < users.length; i++) {
 		users[i].save(function(err){
 			if(err) return console.error(err);
-			console.log('saved');
+			console.log('User saved');
 		});
 	};
+	if (cb) cb();
 }
 
 function createUser (name,surname,dateOfBirth,city){
@@ -46,25 +49,29 @@ users[2] = createUser(
 		new Date(95,1,8),
 		'Kakanj');
 
-var db = mongoose.createConnection(dbUrl);
+var db = mongoose.connection;
 db.on('error',function (cb){
 	console.log('Error');
 });
 db.once('open',function (cb) {
 	console.log('Connected');
-	SaveUsers();
+
+	User.remove({},function(err){
+		console.log('Prazna');
+		
+		SaveUsers(function (err){
+			User.find(function (err,users){
+				if (err) return console.log('Error');
+				for (var i = 0; i < users.length; i++) {
+					console.log('');
+					console.log(users[i].name + ' '
+					 + users[i].surname);
+					console.log(users[i].dateOfBirth);
+					console.log(users[i].city);
+				};
+				db.close();
+			});
+		});
+	})
 });
 
-/*db.close();
-
-var dbRead = mongoose.createConnection(dbUrl);
-dbRead.on('error',function (cb){
-	console.log('Error');
-});
-dbRead.once('open',function (cb) {
-	console.log('Connected');
-	User.find(function (err,users){
-		if (err) return console.log('Error');
-		console.log(users);
-	});
-});*/
