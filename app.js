@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 var dbUrl = 'mongodb://localhost:27017/baza';
+var db = mongoose.connection;
 
-mongoose.connect(dbUrl);
 
 var userSchema = mongoose.Schema({
 	name:String,
@@ -14,14 +14,35 @@ var User = mongoose.model('User',userSchema);
 
 var users = [];
 
+function ReadUsers(cb){
+	User.find(function (err,users){
+				if (err) return console.error('Error');
+
+				for (var i = 0; i < users.length; i++) {
+					console.log('');
+					console.log(users[i].name + ' '
+					 + users[i].surname);
+					console.log(users[i].dateOfBirth);
+					console.log(users[i].city);
+				};
+
+				if(cb) cb();
+			});
+}
+
 function SaveUsers(cb){
+	var counter = users.length;
+
 	for (var i = 0; i < users.length; i++) {
 		users[i].save(function(err){
 			if(err) return console.error(err);
+
 			console.log('User saved');
+
+			counter--;
+			if (cb && counter==0) cb();
 		});
-	};
-	if (cb) cb();
+	};	
 }
 
 function createUser (name,surname,dateOfBirth,city){
@@ -30,6 +51,35 @@ function createUser (name,surname,dateOfBirth,city){
 	surname:surname,
 	dateOfBirth:dateOfBirth,
 	city:city
+	});
+}
+
+function disconnect (cb){
+	db.close(function(){
+		if(cb) cb();
+	});	
+}
+
+function clear(cb){
+	User.remove({},function(err){
+			if (err) return console.error('Error');
+
+			console.log('Cleared');
+			
+			if(cb) cb();
+		})
+}
+
+function connect(URL,cb){
+	mongoose.connect(URL);
+
+	db.on('error',function (c){
+		console.error('Error');
+	});
+	db.once('open',function (c) {
+		console.log('Connected');
+
+		if(cb) cb();
 	});
 }
 
@@ -49,29 +99,12 @@ users[2] = createUser(
 		new Date(95,1,8),
 		'Kakanj');
 
-var db = mongoose.connection;
-db.on('error',function (cb){
-	console.log('Error');
-});
-db.once('open',function (cb) {
-	console.log('Connected');
-
-	User.remove({},function(err){
-		console.log('Prazna');
-		
-		SaveUsers(function (err){
-			User.find(function (err,users){
-				if (err) return console.log('Error');
-				for (var i = 0; i < users.length; i++) {
-					console.log('');
-					console.log(users[i].name + ' '
-					 + users[i].surname);
-					console.log(users[i].dateOfBirth);
-					console.log(users[i].city);
-				};
-				db.close();
+connect(dbUrl,function(){
+	clear(function(){
+		SaveUsers(function(){
+			ReadUsers(function(){
+				disconnect(console.log('Disconnected'));
 			});
 		});
 	})
 });
-
